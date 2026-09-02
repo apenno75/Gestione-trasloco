@@ -4,17 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Penno-smart - QR Code Box Manager</title>
-    <!-- Tailwind CSS per uno stile moderno e reattivo -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome per icone intuitive -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Google Fonts per una leggibilità ottimale -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Libreria nativa per generare i codici QR sul client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -43,10 +38,8 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-0 md:p-4 text-slate-100">
 
-    <!-- CONTENITORE PRINCIPALE: Adattivo per Mobile & Desktop -->
     <div class="w-full max-w-md bg-slate-900 md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[850px] relative">
         
-        <!-- BARRA DI STATO SIMULATA (Solo Desktop) -->
         <div class="hidden md:flex justify-between items-center px-6 pt-3 pb-2 text-xs text-slate-400 bg-slate-900 z-10">
             <span>15:30 <i class="fa-solid fa-cloud-sun ml-1"></i></span>
             <div class="flex items-center gap-2">
@@ -56,7 +49,6 @@
             </div>
         </div>
 
-        <!-- HEADER APPLICAZIONE -->
         <header class="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between border-b border-slate-800 shadow-md z-10">
             <div class="flex items-center gap-3">
                 <div class="p-2 bg-lime-400/10 rounded-xl text-lime-400">
@@ -72,10 +64,8 @@
             </div>
         </header>
 
-        <!-- AREA CONTENUTO PRINCIPALE (Scorrevole con padding ottimizzato per mobile) -->
         <main class="flex-grow overflow-y-auto p-4 md:p-5 pb-32" id="main-content">
             
-            <!-- SCHERMATA 1: CREA / MODIFICA SCATOLA -->
             <section id="view-form" class="space-y-4">
                 <div class="flex justify-between items-center mb-1">
                     <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
@@ -87,13 +77,10 @@
                     </button>
                 </div>
 
-                <!-- Campo nascosto per gestire ID scatola in modifica -->
                 <input type="hidden" id="box-id" value="">
 
-                <!-- Sezione Campi di Input -->
                 <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-inner">
                     
-                    <!-- Campo ID Scatola -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Codice Scatola</label>
                         <div class="relative">
@@ -104,7 +91,6 @@
                         </div>
                     </div>
 
-                    <!-- Dropdown: Stanza di Partenza -->
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stanza di Partenza</label>
@@ -115,15 +101,13 @@
                                 <i class="fa-solid fa-right-from-bracket"></i>
                             </span>
                             <select id="select-partenza" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold appearance-none">
-                                <!-- Popolato dinamicamente -->
-                            </select>
+                                </select>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-500">
                                 <i class="fa-solid fa-chevron-down text-xs"></i>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Dropdown: Stanza di Arrivo -->
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stanza di Arrivo</label>
@@ -134,15 +118,13 @@
                                 <i class="fa-solid fa-right-to-bracket"></i>
                             </span>
                             <select id="select-arrivo" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold appearance-none">
-                                <!-- Popolato dinamicamente -->
-                            </select>
+                                </select>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-500">
                                 <i class="fa-solid fa-chevron-down text-xs"></i>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Dropdown: Fragile o no -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contenuto Fragile?</label>
                         <div class="relative">
@@ -159,14 +141,12 @@
                         </div>
                     </div>
 
-                    <!-- Campo Testo Lungo: Contenuto Scatola -->
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contenuto dettagliato</label>
                         <textarea id="text-contenuto" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Elenca qui tutto ciò che inserisci nella scatola..."></textarea>
                     </div>
                 </div>
 
-                <!-- Bottoni Operativi del Form -->
                 <div class="grid grid-cols-2 gap-3 pt-1">
                     <button id="btn-generate-qr" onclick="generaEVisualizzaQR()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
                         <i class="fa-solid fa-qrcode text-lg text-lime-400"></i> Genera QR
@@ -176,7 +156,6 @@
                     </button>
                 </div>
 
-                <!-- BOX ANTEPRIMA E DETTAGLIO QR CODE -->
                 <div id="container-qr-preview" class="hidden bg-slate-800/80 border-2 border-dashed border-slate-700 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
                     <h3 class="text-xs font-bold text-lime-400 uppercase tracking-wider">Codice QR Generato</h3>
                     
@@ -201,7 +180,6 @@
                 </div>
             </section>
 
-            <!-- SCHERMATA 2: INVENTARIO / LISTA SCATOLE -->
             <section id="view-inventory" class="hidden space-y-3.5">
                 <div class="flex justify-between items-center">
                     <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
@@ -218,11 +196,9 @@
                 </div>
 
                 <div id="scatole-list" class="space-y-3">
-                    <!-- Popolato dinamicamente da JS -->
-                </div>
+                    </div>
             </section>
 
-            <!-- SCHERMATA 3: GESTIONE ELENCO STANZE -->
             <section id="view-rooms" class="hidden space-y-5">
                 <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2 mb-1">
                     <i class="fa-solid fa-sliders text-lime-400"></i>
@@ -251,9 +227,30 @@
                     <ul id="list-rooms-arrivo" class="divide-y divide-slate-800 max-h-40 overflow-y-auto pr-1"></ul>
                 </div>
             </section>
+
+            <section id="view-search" class="hidden space-y-3.5">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass text-lime-400"></i>
+                        <span>Cerca Parola o Frase</span>
+                    </h2>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                        <i class="fa-solid fa-keyboard"></i>
+                    </span>
+                    <input type="text" id="global-search-input" oninput="eseguiRicercaGlobale()" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Digita una parola o frase da cercare...">
+                </div>
+
+                <div id="search-results-list" class="space-y-3">
+                    <div class="text-center py-10 text-slate-500 text-sm">
+                        <i class="fa-solid fa-search text-3xl mb-2 block"></i>Inserisci una parola o una frase per iniziare la ricerca
+                    </div>
+                </div>
+            </section>
         </main>
 
-        <!-- NAVIGAZIONE DI BASSO (Fissa con padding sicuro per dispositivi mobili) -->
         <nav class="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-2.5 px-2 z-20 pb-safe">
             <button onclick="vaiATab('form')" id="nav-form" class="flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3">
                 <i class="fa-solid fa-square-plus text-lg"></i>
@@ -267,10 +264,13 @@
                 <i class="fa-solid fa-sliders text-lg"></i>
                 <span class="text-[10px] font-semibold">Stanze</span>
             </button>
+            <button onclick="vaiATab('search')" id="nav-search" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition py-1 px-3">
+                <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                <span class="text-[10px] font-semibold">Cerca</span>
+            </button>
         </nav>
     </div>
 
-    <!-- LOGICA JAVASCRIPT & SUPABASE -->
     <script>
         let stanzePartenza = ["Matrimoniale P.T.", "Cucina P.T.", "Bagno P.T.", "Studio P.T.", "Corridoio", "Ripostiglio P.T.", "Garage", "Tavernetta S-1", "Antibagno S-1"];
         let stanzeArrivo = ["Matrimoniale P.1", "Cucina P.T.", "Soggiorno/Salotto P.T.", "Bagno P.T.", "Bagno P.1", "Studio P.1", "Cameretta P.1", "Nuovo Garage", "Tavernetta S-1", "Lavanderia S-1"];
@@ -735,14 +735,70 @@
             mostraListaScatole(res);
         }
 
+        function eseguiRicercaGlobale() {
+            const queryInput = document.getElementById('global-search-input');
+            const container = document.getElementById('search-results-list');
+            if (!queryInput || !container) return;
+
+            const q = queryInput.value.toLowerCase().trim();
+            container.innerHTML = "";
+
+            if (!q) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-search text-3xl mb-2 block"></i>Inserisci una parola o una frase per iniziare la ricerca</div>`;
+                return;
+            }
+
+            const risultati = scatole.filter(s => {
+                const idMatch = s.id && s.id.toLowerCase().includes(q);
+                const partenzaMatch = s.partenza && s.partenza.toLowerCase().includes(q);
+                const arrivoMatch = s.arrivo && s.arrivo.toLowerCase().includes(q);
+                const contenutoMatch = s.contenuto && s.contenuto.toLowerCase().includes(q);
+                return idMatch || partenzaMatch || arrivoMatch || contenutoMatch;
+            });
+
+            if (risultati.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-circle-exclamation text-3xl mb-2 block"></i>Nessuna scatola trovata per "${queryInput.value}"</div>`;
+                return;
+            }
+
+            risultati.forEach(s => {
+                const badge = s.fragile === 'si' ? `<span class="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded">FRAGILE</span>` : ``;
+                container.innerHTML += `
+                    <div class="bg-slate-800/60 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-2 shadow-sm">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-white text-base">${s.id}</h3>
+                                    ${badge}
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    <i class="fa-solid fa-right-from-bracket text-lime-400 mr-1"></i>${s.partenza} 
+                                    <i class="fa-solid fa-arrow-right mx-1 text-slate-600"></i>
+                                    <i class="fa-solid fa-right-to-bracket text-lime-400 mr-1"></i>${s.arrivo}
+                                </p>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <button onclick="caricaScatolaPerModifica('${s.id}')" class="p-2 bg-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-lg transition"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                <button onclick="eliminaScatola('${s.id}')" class="p-2 bg-red-950/40 hover:bg-red-900 text-red-400 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">
+                            <p class="text-xs text-slate-300 italic line-clamp-2">${s.contenuto || 'Nessun dettaglio'}</p>
+                        </div>
+                    </div>`;
+            });
+        }
+
         function vaiATab(tab) {
             document.getElementById('view-form').classList.add('hidden');
             document.getElementById('view-inventory').classList.add('hidden');
             document.getElementById('view-rooms').classList.add('hidden');
+            document.getElementById('view-search').classList.add('hidden');
 
             document.getElementById('nav-form').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
             document.getElementById('nav-inventario').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
             document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
+            document.getElementById('nav-search').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
 
             if (tab === 'form') {
                 document.getElementById('view-form').classList.remove('hidden');
@@ -754,6 +810,9 @@
             } else if (tab === 'stanze') {
                 document.getElementById('view-rooms').classList.remove('hidden');
                 document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
+            } else if (tab === 'search') {
+                document.getElementById('view-search').classList.remove('hidden');
+                document.getElementById('nav-search').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
             }
         }
     </script>
