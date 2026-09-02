@@ -314,7 +314,7 @@
         let scatole = [];
         let qrCodeInstance = null;
 
-        // Configurazione Supabase
+        // Configurazione Supabase (Corretto recupero chiavi da localStorage)
         let supabaseUrl = localStorage.getItem('supabaseUrl') || '';
         let supabaseKey = localStorage.getItem('supabaseKey') || '';
         let supabaseClient = null;
@@ -344,7 +344,8 @@
             console.error("Errore nel caricamento del LocalStorage:", e);
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
+        // Avvio asincrono: carica schermata e sincronizza automaticamente da Supabase
+        document.addEventListener("DOMContentLoaded", async () => {
             popolaDropdownStanze();
             aggiornaElenchiStanzeConfig();
             mostraListaScatole();
@@ -354,7 +355,58 @@
             document.getElementById('supabase-key').value = supabaseKey;
             
             assegnaCodiceScatolaAutomatico();
+
+            // Sincronizzazione automatica all'avvio se il client è configurato
+            if (supabaseClient) {
+                await avviaSincronizzazioneAutomaticaAllAvvio();
+            }
         });
+
+        async function avviaSincronizzazioneAutomaticaAllAvvio() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient.from('scatole').select('*');
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        const nuova = {
+                            id: item.id,
+                            partenza: item.partenza || "Cucina",
+                            arrivo: item.arrivo || "Soggiorno",
+                            fragile: item.fragile || "no",
+                            contenuto: item.contenuto || "",
+                            dataCreazione: item.data_creazione || new Date().toLocaleDateString('it-IT')
+                        };
+
+                        if (nuova.partenza && !stanzePartenza.includes(nuova.partenza)) {
+                            stanzePartenza.push(nuova.partenza);
+                        }
+                        if (nuova.arrivo && !stanzeArrivo.includes(nuova.arrivo)) {
+                            stanzeArrivo.push(nuova.arrivo);
+                        }
+
+                        const idx = scatole.findIndex(s => s.id === nuova.id);
+                        if (idx !== -1) {
+                            scatole[idx] = nuova;
+                        } else {
+                            scatole.push(nuova);
+                        }
+                    });
+
+                    localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
+                    localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
+                    localStorage.setItem('scatole', JSON.stringify(scatole));
+                    
+                    popolaDropdownStanze();
+                    aggiornaElenchiStanzeConfig();
+                    inizializzaContatori();
+                    mostraListaScatole();
+                }
+            } catch (err) {
+                console.error("Errore durante la sincronizzazione automatica all'avvio:", err);
+            }
+        }
 
         function inizializzaContatori() {
             document.getElementById('counter-scatole').innerText = scatole.length;
