@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Penno-smart - QR Code Box Manager</title>
+    <!-- Tailwind CSS per uno stile moderno e reattivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome per icone intuitive -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts per una leggibilità ottimale -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Libreria nativa per generare i codici QR sul client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: 'Urbanist', sans-serif;
+            background-color: #0f172a;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 2px;
+        }
+        /* Previene lo zoom automatico su iOS per input < 16px */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-0 md:p-4 text-slate-100">
+
+    <!-- CONTENITORE PRINCIPALE: Adattivo per Mobile & Desktop -->
+    <div class="w-full max-w-md bg-slate-900 md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[850px] relative">
+        
+        <!-- BARRA DI STATO SIMULATA (Solo Desktop) -->
+        <div class="hidden md:flex justify-between items-center px-6 pt-3 pb-2 text-xs text-slate-400 bg-slate-900 z-10">
+            <span>15:30 <i class="fa-solid fa-cloud-sun ml-1"></i></span>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-wifi"></i>
+                <i class="fa-solid fa-signal"></i>
+                <i class="fa-solid fa-battery-three-quarters"></i>
+            </div>
+        </div>
+
+        <!-- HEADER APPLICAZIONE -->
+        <header class="bg-gradient-to-r from-slate-900 to-slate-800 px-5 py-4 flex items-center justify-between border-b border-slate-800 shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-lime-400/10 rounded-xl text-lime-400">
+                    <i class="fa-solid fa-boxes-packing text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base md:text-lg font-bold leading-none tracking-wide text-white">Penno-smart</h1>
+                    <span class="text-[11px] text-slate-400">Gestore QR Scatole</span>
+                </div>
+            </div>
+            <div class="bg-slate-800 px-3 py-1 rounded-full text-xs font-semibold text-lime-400 border border-slate-700">
+                <span id="counter-scatole">0</span> Scatole
+            </div>
+        </header>
+
+        <!-- AREA CONTENUTO PRINCIPALE (Scorrevole con padding ottimizzato per mobile) -->
+        <main class="flex-grow overflow-y-auto p-4 md:p-5 pb-32" id="main-content">
+            
+            <!-- SCHERMATA 1: CREA / MODIFICA SCATOLA -->
+            <section id="view-form" class="space-y-4">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus text-lime-400"></i>
+                        <span id="form-title">Nuova Scatola</span>
+                    </h2>
+                    <button id="btn-reset-form" onclick="resettaForm()" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition active:scale-95">
+                        Annulla
+                    </button>
+                </div>
+
+                <!-- Campo nascosto per gestire ID scatola in modifica -->
+                <input type="hidden" id="box-id" value="">
+
+                <!-- Sezione Campi di Input -->
+                <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-inner">
+                    
+                    <!-- Campo ID Scatola -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Codice Scatola</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                <i class="fa-solid fa-tag"></i>
+                            </span>
+                            <input type="text" id="box-code" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold" placeholder="Es. SCATOLA_001" required>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown: Stanza di Partenza -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stanza di Partenza</label>
+                            <button onclick="vaiATab('stanze')" class="text-xs text-lime-400 hover:underline py-0.5"><i class="fa-solid fa-pen-to-square mr-1"></i>Modifica lista</button>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                            </span>
+                            <select id="select-partenza" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold appearance-none">
+                                <!-- Popolato dinamicamente -->
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown: Stanza di Arrivo -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stanza di Arrivo</label>
+                            <button onclick="vaiATab('stanze')" class="text-xs text-lime-400 hover:underline py-0.5"><i class="fa-solid fa-pen-to-square mr-1"></i>Modifica lista</button>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                            </span>
+                            <select id="select-arrivo" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold appearance-none">
+                                <!-- Popolato dinamicamente -->
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown: Fragile o no -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contenuto Fragile?</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </span>
+                            <select id="select-fragile" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-10 text-slate-100 focus:outline-none focus:border-lime-400 font-semibold appearance-none">
+                                <option value="no">No, contenuto ordinario</option>
+                                <option value="si">Sì, ATTENZIONE - Fragile!</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campo Testo Lungo: Contenuto Scatola -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contenuto dettagliato</label>
+                        <textarea id="text-contenuto" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Elenca qui tutto ciò che inserisci nella scatola..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Bottoni Operativi del Form -->
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <button id="btn-generate-qr" onclick="generaEVisualizzaQR()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-md">
+                        <i class="fa-solid fa-qrcode text-lg text-lime-400"></i> Genera QR
+                    </button>
+                    <button id="btn-save-box" onclick="salvaScatola()" class="bg-lime-400 hover:bg-lime-500 text-slate-950 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition active:scale-95 shadow-lg">
+                        <i class="fa-solid fa-floppy-disk text-lg"></i> <span id="text-btn-salva">Salva</span>
+                    </button>
+                </div>
+
+                <!-- BOX ANTEPRIMA E DETTAGLIO QR CODE -->
+                <div id="container-qr-preview" class="hidden bg-slate-800/80 border-2 border-dashed border-slate-700 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
+                    <h3 class="text-xs font-bold text-lime-400 uppercase tracking-wider">Codice QR Generato</h3>
+                    
+                    <div class="bg-white p-3 rounded-xl inline-block shadow-xl" id="qrcode-canvas"></div>
+                    
+                    <div class="w-full bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-1">
+                        <p class="text-slate-400 font-bold border-b border-slate-800 pb-1 text-center text-sm" id="qr-preview-id">ID: SCATOLA_001</p>
+                        <p><strong class="text-slate-300">Partenza:</strong> <span id="qr-preview-partenza" class="text-slate-100">Cucina</span></p>
+                        <p><strong class="text-slate-300">Arrivo:</strong> <span id="qr-preview-arrivo" class="text-slate-100">Nuova Cucina</span></p>
+                        <p><strong class="text-slate-300">Fragile:</strong> <span id="qr-preview-fragile" class="font-bold">No</span></p>
+                        <p><strong class="text-slate-300">Contenuto:</strong> <span id="qr-preview-contenuto" class="text-slate-100 italic">...</span></p>
+                    </div>
+
+                    <div class="flex gap-2 w-full pt-1">
+                        <button onclick="stampaQR()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-print"></i> Stampa
+                        </button>
+                        <button onclick="pulisciQRPreview()" class="bg-slate-900 hover:bg-slate-950 text-slate-400 text-xs py-2.5 px-4 rounded-xl font-bold transition">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCHERMATA 2: INVENTARIO / LISTA SCATOLE -->
+            <section id="view-inventory" class="hidden space-y-3.5">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-lime-400"></i>
+                        <span>Lista Scatole</span>
+                    </h2>
+                </div>
+
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="search-box" oninput="filtraScatole()" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Cerca per ID, stanza o contenuto...">
+                </div>
+
+                <div id="scatole-list" class="space-y-3">
+                    <!-- Popolato dinamicamente da JS -->
+                </div>
+            </section>
+
+            <!-- SCHERMATA 3: GESTIONE ELENCO STANZE -->
+            <section id="view-rooms" class="hidden space-y-5">
+                <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2 mb-1">
+                    <i class="fa-solid fa-sliders text-lime-400"></i>
+                    <span>Configura Stanze</span>
+                </h2>
+
+                <div class="bg-slate-800/40 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-bold text-lime-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket text-xs"></i> Stanze di Partenza
+                    </h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-room-partenza" class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Nuova stanza...">
+                        <button onclick="aggiungiStanza('partenza')" class="bg-lime-400 text-slate-950 px-4 rounded-xl font-bold hover:bg-lime-500 transition active:scale-95"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <ul id="list-rooms-partenza" class="divide-y divide-slate-800 max-h-40 overflow-y-auto pr-1"></ul>
+                </div>
+
+                <div class="bg-slate-800/40 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-bold text-lime-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i> Stanze di Arrivo
+                    </h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-room-arrivo" class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Nuova stanza...">
+                        <button onclick="aggiungiStanza('arrivo')" class="bg-lime-400 text-slate-950 px-4 rounded-xl font-bold hover:bg-lime-500 transition active:scale-95"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <ul id="list-rooms-arrivo" class="divide-y divide-slate-800 max-h-40 overflow-y-auto pr-1"></ul>
+                </div>
+            </section>
+
+            <!-- SCHERMATA 4: INTEGRAZIONE SUPABASE -->
+            <section id="view-cloud" class="hidden space-y-4">
+                <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-database text-lime-400"></i>
+                    <span>Integrazione Supabase</span>
+                </h2>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-3.5 text-sm">
+                    <p class="text-slate-300 text-xs">Collega l'app al tuo database Supabase inserendo le credenziali del progetto.</p>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Supabase URL</label>
+                        <input type="text" id="supabase-url" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-3 text-xs text-slate-300 focus:outline-none focus:border-lime-400" placeholder="https://xxxx.supabase.co">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Supabase Anon Key</label>
+                        <input type="password" id="supabase-key" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-3 text-xs text-slate-300 focus:outline-none focus:border-lime-400" placeholder="eyJhbGciOiJIUzI1NiIs...">
+                    </div>
+
+                    <button onclick="salvaImpostazioniSupabase()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl text-xs font-bold transition shadow">
+                        Salva Credenziali Supabase
+                    </button>
+                    
+                    <!-- BOTTONE DI SINCRONIZZAZIONE / RECUPERO -->
+                    <div class="border-t border-slate-700/65 pt-4 mt-2">
+                        <p class="text-xs text-slate-400 mb-2.5">Scarica e sincronizza l'intero inventario direttamente dalla tabella Supabase.</p>
+                        <button id="btn-recupera-cloud" onclick="recuperaDatiDaSupabase()" class="w-full bg-lime-400 hover:bg-lime-500 text-slate-950 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizza da Supabase
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- NAVIGAZIONE DI BASSO (Fissa con padding sicuro per dispositivi mobili) -->
+        <nav class="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex justify-around py-2.5 px-2 z-20 pb-safe">
+            <button onclick="vaiATab('form')" id="nav-form" class="flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3">
+                <i class="fa-solid fa-square-plus text-lg"></i>
+                <span class="text-[10px] font-semibold">Crea / Modifica</span>
+            </button>
+            <button onclick="vaiATab('inventario')" id="nav-inventario" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition py-1 px-3">
+                <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                <span class="text-[10px] font-semibold">Inventario</span>
+            </button>
+            <button onclick="vaiATab('stanze')" id="nav-stanze" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition py-1 px-3">
+                <i class="fa-solid fa-sliders text-lg"></i>
+                <span class="text-[10px] font-semibold">Stanze</span>
+            </button>
+            <button onclick="vaiATab('cloud')" id="nav-cloud" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition py-1 px-3">
+                <i class="fa-solid fa-database text-lg"></i>
+                <span class="text-[10px] font-semibold">Supabase</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- LOGICA JAVASCRIPT & SUPABASE -->
+    <script>
+        let stanzePartenza = ["Matrimoniale P.T.", "Cucina P.T.", "Bagno P.T.", "Studio P.T.", "Corridoio", "Ripostiglio P.T.", "Garage", "Tavernetta S-1", "Antibagno S-1"];
+        let stanzeArrivo = ["Matrimoniale P.1", "Cucina P.T.", "Soggiorno/Salotto P.T.", "Bagno P.T.", "Bagno P.1", "Studio P.1", "Cameretta P.1", "Nuovo Garage", "Tavernetta S-1", "Lavanderia S-1"];
+        let scatole = [];
+        let qrCodeInstance = null;
+
+        // Configurazione Supabase
+        let supabaseUrl = localStorage.getItem('supabaseUrl') || '';
+        let supabaseKey = localStorage.getItem('supabaseKey') || '';
+        let supabaseClient = null;
+
+        function initSupabaseClient() {
+            if (supabaseUrl && supabaseKey && window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                } catch (e) {
+                    console.error("Errore inizializzazione client Supabase:", e);
+                }
+            }
+        }
+        initSupabaseClient();
+
+        // Recupero sicuro da LocalStorage
+        try {
+            const storedPartenza = localStorage.getItem('stanzePartenza');
+            if (storedPartenza) stanzePartenza = JSON.parse(storedPartenza);
+            
+            const storedArrivo = localStorage.getItem('stanzeArrivo');
+            if (storedArrivo) stanzeArrivo = JSON.parse(storedArrivo);
+            
+            const storedScatole = localStorage.getItem('scatole');
+            if (storedScatole) scatole = JSON.parse(storedScatole);
+        } catch (e) {
+            console.error("Errore nel caricamento del LocalStorage:", e);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            popolaDropdownStanze();
+            aggiornaElenchiStanzeConfig();
+            mostraListaScatole();
+            inizializzaContatori();
+            
+            document.getElementById('supabase-url').value = supabaseUrl;
+            document.getElementById('supabase-key').value = supabaseKey;
+            
+            assegnaCodiceScatolaAutomatico();
+        });
+
+        function inizializzaContatori() {
+            document.getElementById('counter-scatole').innerText = scatole.length;
+        }
+
+        function popolaDropdownStanze() {
+            const selectPartenza = document.getElementById('select-partenza');
+            const selectArrivo = document.getElementById('select-arrivo');
+            if (!selectPartenza || !selectArrivo) return;
+            
+            selectPartenza.innerHTML = "";
+            selectArrivo.innerHTML = "";
+
+            stanzePartenza.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                selectPartenza.appendChild(opt);
+            });
+            
+            stanzeArrivo.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                selectArrivo.appendChild(opt);
+            });
+        }
+
+        function aggiornaElenchiStanzeConfig() {
+            const listPartenza = document.getElementById('list-rooms-partenza');
+            const listArrivo = document.getElementById('list-rooms-arrivo');
+            if (!listPartenza || !listArrivo) return;
+
+            listPartenza.innerHTML = "";
+            listArrivo.innerHTML = "";
+
+            stanzePartenza.forEach((s, idx) => {
+                listPartenza.innerHTML += `<li class="flex justify-between items-center py-2.5 text-sm text-slate-300"><span>${s}</span><button onclick="rimuoviStanza('partenza', ${idx})" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash text-xs"></i></button></li>`;
+            });
+            stanzeArrivo.forEach((s, idx) => {
+                listArrivo.innerHTML += `<li class="flex justify-between items-center py-2.5 text-sm text-slate-300"><span>${s}</span><button onclick="rimuoviStanza('arrivo', ${idx})" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash text-xs"></i></button></li>`;
+            });
+        }
+
+        function aggiungiStanza(tipo) {
+            if (tipo === 'partenza') {
+                const val = document.getElementById('new-room-partenza').value.trim();
+                if (val && !stanzePartenza.includes(val)) {
+                    stanzePartenza.push(val);
+                    localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
+                    document.getElementById('new-room-partenza').value = "";
+                }
+            } else {
+                const val = document.getElementById('new-room-arrivo').value.trim();
+                if (val && !stanzeArrivo.includes(val)) {
+                    stanzeArrivo.push(val);
+                    localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
+                    document.getElementById('new-room-arrivo').value = "";
+                }
+            }
+            popolaDropdownStanze();
+            aggiornaElenchiStanzeConfig();
+        }
+
+        function rimuoviStanza(tipo, idx) {
+            if (tipo === 'partenza') {
+                stanzePartenza.splice(idx, 1);
+                localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
+            } else {
+                stanzeArrivo.splice(idx, 1);
+                localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
+            }
+            popolaDropdownStanze();
+            aggiornaElenchiStanzeConfig();
+        }
+
+        // --- GENERAZIONE QR CODE ---
+        function generaStringaQR(id, partenza, arrivo, fragileText, contenuto) {
+            return `--- TRASLOCO Penno-smart ---\n` +
+                   `ID SCATOLA: ${id}\n` +
+                   `PARTENZA  : ${partenza}\n` +
+                   `ARRIVO    : ${arrivo}\n` +
+                   `FRAGILE   : ${fragileText}\n` +
+                   `CONTENUTO :\n${contenuto}\n` +
+                   `---------------------------`;
+        }
+
+        function generaEVisualizzaQR() {
+            const code = document.getElementById('box-code').value.trim();
+            const partenza = document.getElementById('select-partenza').value;
+            const arrivo = document.getElementById('select-arrivo').value;
+            const fragile = document.getElementById('select-fragile').value; 
+            const contenuto = document.getElementById('text-contenuto').value.trim();
+
+            if (!code) {
+                alert("Inserisci un codice identificativo per la scatola.");
+                return;
+            }
+
+            const fragileTesto = (fragile === 'si') ? "SI" : "NO";
+            const testoQRRaw = generaStringaQR(code, partenza, arrivo, fragileTesto, contenuto);
+            const testoQR = unescape(encodeURIComponent(testoQRRaw));
+
+            const qrCanvas = document.getElementById('qrcode-canvas');
+            if (!qrCanvas) return;
+            qrCanvas.innerHTML = "";
+
+            try {
+                qrCodeInstance = new QRCode(qrCanvas, {
+                    text: testoQR,
+                    width: 170,
+                    height: 170,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            } catch (e) {
+                try {
+                    qrCanvas.innerHTML = "";
+                    qrCodeInstance = new QRCode(qrCanvas, {
+                        text: testoQR,
+                        width: 170,
+                        height: 170,
+                        colorDark : "#0f172a",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.L
+                    });
+                } catch (err) {
+                    alert("Il contenuto inserito è troppo lungo per il codice QR.");
+                    qrCanvas.innerHTML = "<div class='text-red-400 text-xs p-3'>Errore: testo troppo lungo</div>";
+                    return;
+                }
+            }
+
+            document.getElementById('qr-preview-id').innerText = `ID: ${code}`;
+            document.getElementById('qr-preview-partenza').innerText = partenza;
+            document.getElementById('qr-preview-arrivo').innerText = arrivo;
+            
+            const fragileSpan = document.getElementById('qr-preview-fragile');
+            if (fragile === 'si') {
+                fragileSpan.innerText = "Sì, FRAGILE";
+                fragileSpan.className = "font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded text-xs";
+            } else {
+                fragileSpan.innerText = "No";
+                fragileSpan.className = "text-slate-300 text-xs";
+            }
+
+            document.getElementById('qr-preview-contenuto').innerText = contenuto || 'Nessun dettaglio';
+            document.getElementById('container-qr-preview').classList.remove('hidden');
+            
+            document.getElementById('main-content').scrollTo({
+                top: document.getElementById('container-qr-preview').offsetTop,
+                behavior: 'smooth'
+            });
+        }
+
+        function pulisciQRPreview() {
+            document.getElementById('container-qr-preview').classList.add('hidden');
+        }
+
+        function stampaQR() {
+            const canvasImg = document.querySelector('#qrcode-canvas img');
+            if (!canvasImg) {
+                alert("Genera prima il codice QR.");
+                return;
+            }
+            
+            const code = document.getElementById('box-code').value;
+            const partenza = document.getElementById('select-partenza').value;
+            const arrivo = document.getElementById('select-arrivo').value;
+            const fragile = document.getElementById('select-fragile').value;
+
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert("Abilita i popup nel browser per stampare.");
+                return;
+            }
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Stampa QR - ${code}</title>
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 20px; }
+                        .ticket { border: 2px dashed #000; padding: 20px; max-width: 350px; margin: 0 auto; border-radius: 10px; }
+                        .qr-box img { width: 220px; height: 220px; margin: 10px auto; }
+                        .alert-fragile { background: #ffe6e6; color: #cc0000; font-weight: bold; padding: 6px; border-radius: 4px; margin-top: 8px; font-size: 18px; }
+                        .details { text-align: left; margin-top: 8px; border-top: 1px solid #ccc; padding-top: 8px; font-size: 18px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="ticket">
+                        <div style="font-size: 18px; font-weight: bold;">Penno-smart</div>
+                        <div class="qr-box"><img src="${canvasImg.src}" /></div>
+                        <div style="font-size: 20px; font-weight: bold; background: #f0f0f0; padding: 4px; border-radius: 4px;">ID: ${code}</div>
+                        ${fragile === 'si' ? '<div class="alert-fragile">⚠️ FRAGILE ⚠️</div>' : ''}
+                        <div class="details">
+                            <p><strong>Da:</strong> ${partenza}</p>
+                            <p><strong>A:</strong> ${arrivo}</p>
+                        </div>
+                    </div>
+                    <script>window.onload = function() { window.print(); window.close(); }<\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        // --- GESTIONE SUPABASE CRUD & LOCAL STORAGE ---
+        function assegnaCodiceScatolaAutomatico() {
+            const prossimoNumero = scatole.length + 1;
+            document.getElementById('box-code').value = `SCATOLA_` + String(prossimoNumero).padStart(3, '0');
+        }
+
+        async function salvaScatola() {
+            const code = document.getElementById('box-code').value.trim();
+            const partenza = document.getElementById('select-partenza').value;
+            const arrivo = document.getElementById('select-arrivo').value;
+            const fragile = document.getElementById('select-fragile').value;
+            const contenuto = document.getElementById('text-contenuto').value.trim();
+            const editId = document.getElementById('box-id').value;
+            const dataOggi = new Date().toLocaleDateString('it-IT');
+
+            if (!code) {
+                alert("Inserisci un codice identificativo.");
+                return;
+            }
+
+            let boxObj;
+            if (editId) {
+                const idx = scatole.findIndex(s => s.id === editId);
+                if (idx !== -1) {
+                    scatole[idx] = { id: code, partenza, arrivo, fragile, contenuto, dataCreazione: scatole[idx].dataCreazione || dataOggi };
+                    boxObj = scatole[idx];
+                }
+            } else {
+                if (scatole.some(s => s.id === code)) {
+                    alert("Esiste già una scatola con questo codice!");
+                    return;
+                }
+                boxObj = { id: code, partenza, arrivo, fragile, contenuto, dataCreazione: dataOggi };
+                scatole.push(boxObj);
+            }
+
+            // Salvataggio locale immediato
+            localStorage.setItem('scatole', JSON.stringify(scatole));
+
+            // Salvataggio asincrono su Supabase
+            await salvaSuSupabase(boxObj);
+
+            resettaForm();
+            inizializzaContatori();
+            mostraListaScatole();
+            vaiATab('inventario');
+        }
+
+        async function salvaSuSupabase(box) {
+            if (!supabaseClient) return;
+            try {
+                const { error } = await supabaseClient.from('scatole').upsert([{
+                    id: box.id,
+                    partenza: box.partenza,
+                    arrivo: box.arrivo,
+                    fragile: box.fragile,
+                    contenuto: box.contenuto,
+                    data_creazione: box.dataCreazione
+                }], { onConflict: 'id' });
+
+                if (error) console.error("Errore salvataggio Supabase:", error);
+            } catch (err) {
+                console.error("Eccezione Supabase:", err);
+            }
+        }
+
+        function caricaScatolaPerModifica(id) {
+            const s = scatole.find(box => box.id === id);
+            if (!s) return;
+
+            document.getElementById('form-title').innerText = "Modifica Scatola";
+            document.getElementById('text-btn-salva').innerText = "Aggiorna";
+            document.getElementById('btn-reset-form').classList.remove('hidden');
+
+            document.getElementById('box-id').value = s.id;
+            document.getElementById('box-code').value = s.id;
+            document.getElementById('select-partenza').value = s.partenza;
+            document.getElementById('select-arrivo').value = s.arrivo;
+            document.getElementById('select-fragile').value = s.fragile || "no";
+            document.getElementById('text-contenuto').value = s.contenuto;
+
+            vaiATab('form');
+            generaEVisualizzaQR();
+        }
+
+        async function eliminaScatola(id) {
+            if (confirm(`Rimuovere la scatola "${id}"?`)) {
+                scatole = scatole.filter(s => s.id !== id);
+                localStorage.setItem('scatole', JSON.stringify(scatole));
+                inizializzaContatori();
+                mostraListaScatole();
+
+                if (supabaseClient) {
+                    try {
+                        const { error } = await supabaseClient.from('scatole').delete().eq('id', id);
+                        if (error) console.error("Errore eliminazione Supabase:", error);
+                    } catch (err) {
+                        console.error("Eccezione eliminazione Supabase:", err);
+                    }
+                }
+            }
+        }
+
+        function resettaForm() {
+            document.getElementById('form-title').innerText = "Nuova Scatola";
+            document.getElementById('text-btn-salva').innerText = "Salva";
+            document.getElementById('btn-reset-form').classList.add('hidden');
+            document.getElementById('box-id').value = "";
+            document.getElementById('text-contenuto').value = "";
+            document.getElementById('select-fragile').value = "no";
+            pulisciQRPreview();
+            assegnaCodiceScatolaAutomatico();
+        }
+
+        function mostraListaScatole(listaFiltrata = null) {
+            const container = document.getElementById('scatole-list');
+            if (!container) return;
+            container.innerHTML = "";
+            const dati = listaFiltrata || scatole;
+
+            if (dati.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>Nessuna scatola registrata</div>`;
+                return;
+            }
+
+            dati.forEach(s => {
+                const badge = s.fragile === 'si' ? `<span class="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded">FRAGILE</span>` : ``;
+                container.innerHTML += `
+                    <div class="bg-slate-800/60 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-2 shadow-sm">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-white text-base">${s.id}</h3>
+                                    ${badge}
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    <i class="fa-solid fa-right-from-bracket text-lime-400 mr-1"></i>${s.partenza} 
+                                    <i class="fa-solid fa-arrow-right mx-1 text-slate-600"></i>
+                                    <i class="fa-solid fa-right-to-bracket text-lime-400 mr-1"></i>${s.arrivo}
+                                </p>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <button onclick="caricaScatolaPerModifica('${s.id}')" class="p-2 bg-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-lg transition"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                                <button onclick="eliminaScatola('${s.id}')" class="p-2 bg-red-950/40 hover:bg-red-900 text-red-400 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">
+                            <p class="text-xs text-slate-300 italic line-clamp-2">${s.contenuto || 'Nessun dettaglio'}</p>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function filtraScatole() {
+            const q = document.getElementById('search-box').value.toLowerCase().trim();
+            if (!q) { mostraListaScatole(); return; }
+            const res = scatole.filter(s => s.id.toLowerCase().includes(q) || s.partenza.toLowerCase().includes(q) || s.arrivo.toLowerCase().includes(q) || s.contenuto.toLowerCase().includes(q));
+            mostraListaScatole(res);
+        }
+
+        function salvaImpostazioniSupabase() {
+            supabaseUrl = document.getElementById('supabase-url').value.trim();
+            supabaseKey = document.getElementById('supabase-key').value.trim();
+            
+            localStorage.setItem('supabaseUrl', supabaseUrl);
+            localStorage.setItem('supabaseKey', supabaseKey);
+            
+            initSupabaseClient();
+            alert("Credenziali Supabase salvate con successo!");
+        }
+
+        async function recuperaDatiDaSupabase() {
+            if (!supabaseClient) {
+                alert("Configura e salva prima URL e Anon Key di Supabase!");
+                return;
+            }
+            
+            const btn = document.getElementById('btn-recupera-cloud');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-2"></i>Sincronizzazione...`;
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient.from('scatole').select('*');
+                if (error) throw error;
+
+                if (data) {
+                    const nuoveScatole = data.map(item => ({
+                        id: item.id,
+                        partenza: item.partenza || "Cucina",
+                        arrivo: item.arrivo || "Soggiorno",
+                        fragile: item.fragile || "no",
+                        contenuto: item.contenuto || "",
+                        dataCreazione: item.data_creazione || new Date().toLocaleDateString('it-IT')
+                    }));
+
+                    nuoveScatole.forEach(nuova => {
+                        if (nuova.partenza && !stanzePartenza.includes(nuova.partenza)) {
+                            stanzePartenza.push(nuova.partenza);
+                        }
+                        if (nuova.arrivo && !stanzeArrivo.includes(nuova.arrivo)) {
+                            stanzeArrivo.push(nuova.arrivo);
+                        }
+
+                        const idx = scatole.findIndex(s => s.id === nuova.id);
+                        if (idx !== -1) {
+                            scatole[idx] = nuova;
+                        } else {
+                            scatole.push(nuova);
+                        }
+                    });
+
+                    localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
+                    localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
+                    localStorage.setItem('scatole', JSON.stringify(scatole));
+                    
+                    popolaDropdownStanze();
+                    aggiornaElenchiStanzeConfig();
+                    inizializzaContatori();
+                    mostraListaScatole();
+                    
+                    alert(`Sincronizzazione completata! Caricate ${nuoveScatole.length} scatole da Supabase.`);
+                    vaiATab('inventario');
+                }
+            } catch (err) {
+                console.error("Errore sincronizzazione Supabase:", err);
+                alert("Errore durante la connessione a Supabase. Verifica le credenziali e che la tabella 'scatole' esista.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function vaiATab(tab) {
+            document.getElementById('view-form').classList.add('hidden');
+            document.getElementById('view-inventory').classList.add('hidden');
+            document.getElementById('view-rooms').classList.add('hidden');
+            document.getElementById('view-cloud').classList.add('hidden');
+
+            document.getElementById('nav-form').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
+            document.getElementById('nav-inventario').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
+            document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
+            document.getElementById('nav-cloud').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
+
+            if (tab === 'form') {
+                document.getElementById('view-form').classList.remove('hidden');
+                document.getElementById('nav-form').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
+            } else if (tab === 'inventario') {
+                document.getElementById('view-inventory').classList.remove('hidden');
+                document.getElementById('nav-inventario').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
+                mostraListaScatole();
+            } else if (tab === 'stanze') {
+                document.getElementById('view-rooms').classList.remove('hidden');
+                document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
+            } else if (tab === 'cloud') {
+                document.getElementById('view-cloud').classList.remove('hidden');
+                document.getElementById('nav-cloud').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
+            }
+        }
+    </script>
+</body>
+</html>
