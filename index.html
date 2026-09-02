@@ -251,39 +251,6 @@
                     <ul id="list-rooms-arrivo" class="divide-y divide-slate-800 max-h-40 overflow-y-auto pr-1"></ul>
                 </div>
             </section>
-
-            <!-- SCHERMATA 4: INTEGRAZIONE SUPABASE -->
-            <section id="view-cloud" class="hidden space-y-4">
-                <h2 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-database text-lime-400"></i>
-                    <span>Integrazione Supabase</span>
-                </h2>
-                <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-3.5 text-sm">
-                    <p class="text-slate-300 text-xs">Collega l'app al tuo database Supabase inserendo le credenziali del progetto.</p>
-                    
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Supabase URL</label>
-                        <input type="text" id="supabase-url" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-3 text-xs text-slate-300 focus:outline-none focus:border-lime-400" placeholder="https://xxxx.supabase.co">
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Supabase Anon Key</label>
-                        <input type="password" id="supabase-key" class="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 px-3 text-xs text-slate-300 focus:outline-none focus:border-lime-400" placeholder="eyJhbGciOiJIUzI1NiIs...">
-                    </div>
-
-                    <button onclick="salvaImpostazioniSupabase()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl text-xs font-bold transition shadow">
-                        Salva Credenziali Supabase
-                    </button>
-                    
-                    <!-- BOTTONE DI SINCRONIZZAZIONE / RECUPERO -->
-                    <div class="border-t border-slate-700/65 pt-4 mt-2">
-                        <p class="text-xs text-slate-400 mb-2.5">Scarica e sincronizza l'intero inventario direttamente dalla tabella Supabase.</p>
-                        <button id="btn-recupera-cloud" onclick="recuperaDatiDaSupabase()" class="w-full bg-lime-400 hover:bg-lime-500 text-slate-950 py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg active:scale-95">
-                            <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizza da Supabase
-                        </button>
-                    </div>
-                </div>
-            </section>
         </main>
 
         <!-- NAVIGAZIONE DI BASSO (Fissa con padding sicuro per dispositivi mobili) -->
@@ -300,10 +267,6 @@
                 <i class="fa-solid fa-sliders text-lg"></i>
                 <span class="text-[10px] font-semibold">Stanze</span>
             </button>
-            <button onclick="vaiATab('cloud')" id="nav-cloud" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition py-1 px-3">
-                <i class="fa-solid fa-database text-lg"></i>
-                <span class="text-[10px] font-semibold">Supabase</span>
-            </button>
         </nav>
     </div>
 
@@ -314,15 +277,15 @@
         let scatole = [];
         let qrCodeInstance = null;
 
-        // Configurazione Supabase (Corretto recupero chiavi da localStorage)
-        let supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-        let supabaseKey = localStorage.getItem('supabaseKey') || '';
+        // Credenziali Supabase fisse integrate direttamente nel codice
+        const SUPABASE_URL = 'https://erukzvrtjnvyzjvfuirn.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_FDhQ03affjzeyhCHuoKulg_Rp7PdyLM';
         let supabaseClient = null;
 
         function initSupabaseClient() {
-            if (supabaseUrl && supabaseKey && window.supabase) {
+            if (SUPABASE_URL && SUPABASE_KEY && window.supabase) {
                 try {
-                    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 } catch (e) {
                     console.error("Errore inizializzazione client Supabase:", e);
                 }
@@ -330,7 +293,7 @@
         }
         initSupabaseClient();
 
-        // Recupero sicuro da LocalStorage
+        // Recupero sicuro da LocalStorage per offline / cache locale
         try {
             const storedPartenza = localStorage.getItem('stanzePartenza');
             if (storedPartenza) stanzePartenza = JSON.parse(storedPartenza);
@@ -351,12 +314,9 @@
             mostraListaScatole();
             inizializzaContatori();
             
-            document.getElementById('supabase-url').value = supabaseUrl;
-            document.getElementById('supabase-key').value = supabaseKey;
-            
             assegnaCodiceScatolaAutomatico();
 
-            // Sincronizzazione automatica all'avvio se il client è configurato
+            // Sincronizzazione automatica all'avvio con Supabase
             if (supabaseClient) {
                 await avviaSincronizzazioneAutomaticaAllAvvio();
             }
@@ -775,89 +735,14 @@
             mostraListaScatole(res);
         }
 
-        function salvaImpostazioniSupabase() {
-            supabaseUrl = document.getElementById('supabase-url').value.trim();
-            supabaseKey = document.getElementById('supabase-key').value.trim();
-            
-            localStorage.setItem('supabaseUrl', supabaseUrl);
-            localStorage.setItem('supabaseKey', supabaseKey);
-            
-            initSupabaseClient();
-            alert("Credenziali Supabase salvate con successo!");
-        }
-
-        async function recuperaDatiDaSupabase() {
-            if (!supabaseClient) {
-                alert("Configura e salva prima URL e Anon Key di Supabase!");
-                return;
-            }
-            
-            const btn = document.getElementById('btn-recupera-cloud');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-2"></i>Sincronizzazione...`;
-            btn.disabled = true;
-
-            try {
-                const { data, error } = await supabaseClient.from('scatole').select('*');
-                if (error) throw error;
-
-                if (data) {
-                    const nuoveScatole = data.map(item => ({
-                        id: item.id,
-                        partenza: item.partenza || "Cucina",
-                        arrivo: item.arrivo || "Soggiorno",
-                        fragile: item.fragile || "no",
-                        contenuto: item.contenuto || "",
-                        dataCreazione: item.data_creazione || new Date().toLocaleDateString('it-IT')
-                    }));
-
-                    nuoveScatole.forEach(nuova => {
-                        if (nuova.partenza && !stanzePartenza.includes(nuova.partenza)) {
-                            stanzePartenza.push(nuova.partenza);
-                        }
-                        if (nuova.arrivo && !stanzeArrivo.includes(nuova.arrivo)) {
-                            stanzeArrivo.push(nuova.arrivo);
-                        }
-
-                        const idx = scatole.findIndex(s => s.id === nuova.id);
-                        if (idx !== -1) {
-                            scatole[idx] = nuova;
-                        } else {
-                            scatole.push(nuova);
-                        }
-                    });
-
-                    localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
-                    localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
-                    localStorage.setItem('scatole', JSON.stringify(scatole));
-                    
-                    popolaDropdownStanze();
-                    aggiornaElenchiStanzeConfig();
-                    inizializzaContatori();
-                    mostraListaScatole();
-                    
-                    alert(`Sincronizzazione completata! Caricate ${nuoveScatole.length} scatole da Supabase.`);
-                    vaiATab('inventario');
-                }
-            } catch (err) {
-                console.error("Errore sincronizzazione Supabase:", err);
-                alert("Errore durante la connessione a Supabase. Verifica le credenziali e che la tabella 'scatole' esista.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
         function vaiATab(tab) {
             document.getElementById('view-form').classList.add('hidden');
             document.getElementById('view-inventory').classList.add('hidden');
             document.getElementById('view-rooms').classList.add('hidden');
-            document.getElementById('view-cloud').classList.add('hidden');
 
             document.getElementById('nav-form').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
             document.getElementById('nav-inventario').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
             document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
-            document.getElementById('nav-cloud').className = "flex flex-col items-center gap-1 text-slate-500 transition py-1 px-3";
 
             if (tab === 'form') {
                 document.getElementById('view-form').classList.remove('hidden');
@@ -869,9 +754,6 @@
             } else if (tab === 'stanze') {
                 document.getElementById('view-rooms').classList.remove('hidden');
                 document.getElementById('nav-stanze').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
-            } else if (tab === 'cloud') {
-                document.getElementById('view-cloud').classList.remove('hidden');
-                document.getElementById('nav-cloud').className = "flex flex-col items-center gap-1 text-lime-400 transition py-1 px-3";
             }
         }
     </script>
