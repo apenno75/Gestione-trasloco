@@ -697,9 +697,15 @@
                     data_creazione: box.dataCreazione
                 }], { onConflict: 'id' });
 
-                if (error) console.error("Errore salvataggio Supabase:", formattaErroreSupabase(error));
+                if (error) {
+                    console.error("Errore salvataggio Supabase:", formattaErroreSupabase(error));
+                    mostraBannerSync("Salvataggio online fallito: " + formattaErroreSupabase(error), "errore");
+                } else {
+                    mostraBannerSync("Scatola sincronizzata online", "ok");
+                }
             } catch (err) {
                 console.error("Eccezione Supabase:", formattaErroreSupabase(err));
+                mostraBannerSync("Salvataggio online fallito: " + formattaErroreSupabase(err), "errore");
             }
         }
 
@@ -732,9 +738,13 @@
                 if (supabaseClient) {
                     try {
                         const { error } = await supabaseClient.from('scatole').delete().eq('id', id);
-                        if (error) console.error("Errore eliminazione Supabase:", formattaErroreSupabase(error));
+                        if (error) {
+                            console.error("Errore eliminazione Supabase:", formattaErroreSupabase(error));
+                            mostraBannerSync("Eliminazione online fallita: " + formattaErroreSupabase(error), "errore");
+                        }
                     } catch (err) {
                         console.error("Eccezione eliminazione Supabase:", formattaErroreSupabase(err));
+                        mostraBannerSync("Eliminazione online fallita: " + formattaErroreSupabase(err), "errore");
                     }
                 }
             }
