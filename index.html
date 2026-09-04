@@ -38,7 +38,7 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-0 md:p-4 text-slate-100">
 
-    <div class="w-full max-w-md bg-slate-900 md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 overflow-hidden flex flex-col h-screen md:h-[800px] relative">
+    <div class="app-shell w-full max-w-md bg-slate-900 md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 overflow-hidden flex flex-col h-[100dvh] md:h-[800px] relative">
         
         <div class="hidden md:flex justify-between items-center px-6 pt-3 pb-2 text-xs text-slate-400 bg-slate-900 z-10">
             <span>15:30 <i class="fa-solid fa-cloud-sun ml-1"></i></span>
@@ -301,6 +301,40 @@
         }
         initSupabaseClient();
 
+        // Trasforma un errore di Supabase/rete in un testo leggibile invece di "[object Object]"
+        function formattaErroreSupabase(err) {
+            if (!err) return "Errore sconosciuto";
+            if (typeof err === 'string') return err;
+            const parti = [];
+            if (err.message) parti.push(err.message);
+            if (err.code) parti.push(`(codice: ${err.code})`);
+            if (err.details) parti.push(`- dettagli: ${err.details}`);
+            if (err.hint) parti.push(`- suggerimento: ${err.hint}`);
+            if (parti.length === 0) {
+                try { return JSON.stringify(err); } catch (e) { return String(err); }
+            }
+            return parti.join(' ');
+        }
+
+        // Mostra un banner non invasivo in alto, senza bloccare l'app
+        function mostraBannerSync(messaggio, tipo) {
+            let banner = document.getElementById('sync-banner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'sync-banner';
+                banner.className = 'absolute top-0 left-0 right-0 z-30 text-xs font-semibold text-center py-2 px-4 transition-opacity';
+                document.querySelector('.app-shell').appendChild(banner);
+            }
+            banner.textContent = messaggio;
+            banner.className = 'absolute top-0 left-0 right-0 z-30 text-xs font-semibold text-center py-2 px-4 transition-opacity ' +
+                (tipo === 'errore'
+                    ? 'bg-red-950/90 text-red-300 border-b border-red-800'
+                    : 'bg-lime-950/90 text-lime-300 border-b border-lime-800');
+            banner.style.opacity = '1';
+            clearTimeout(banner._timeout);
+            banner._timeout = setTimeout(() => { banner.style.opacity = '0'; }, 4000);
+        }
+
         // Recupero sicuro da LocalStorage per offline / cache locale
         try {
             const storedPartenza = localStorage.getItem('stanzePartenza');
@@ -373,7 +407,8 @@
                     mostraListaScatole();
                 }
             } catch (err) {
-                console.error("Errore durante la sincronizzazione automatica all'avvio:", err);
+                console.error("Errore durante la sincronizzazione automatica all'avvio:", formattaErroreSupabase(err));
+                mostraBannerSync("Sincronizzazione non riuscita, si lavora in locale", "errore");
             }
         }
 
@@ -662,9 +697,9 @@
                     data_creazione: box.dataCreazione
                 }], { onConflict: 'id' });
 
-                if (error) console.error("Errore salvataggio Supabase:", error);
+                if (error) console.error("Errore salvataggio Supabase:", formattaErroreSupabase(error));
             } catch (err) {
-                console.error("Eccezione Supabase:", err);
+                console.error("Eccezione Supabase:", formattaErroreSupabase(err));
             }
         }
 
@@ -697,9 +732,9 @@
                 if (supabaseClient) {
                     try {
                         const { error } = await supabaseClient.from('scatole').delete().eq('id', id);
-                        if (error) console.error("Errore eliminazione Supabase:", error);
+                        if (error) console.error("Errore eliminazione Supabase:", formattaErroreSupabase(error));
                     } catch (err) {
-                        console.error("Eccezione eliminazione Supabase:", err);
+                        console.error("Eccezione eliminazione Supabase:", formattaErroreSupabase(err));
                     }
                 }
             }
@@ -853,7 +888,27 @@
             }
         }
     </script>
-	
+
+    <script>
+        // Fallback per browser che non supportano l'unità CSS "dvh":
+        // imposta l'altezza reale della finestra e la ricalcola quando cambia
+        // (es. comparsa/scomparsa della barra degli indirizzi su mobile).
+        (function () {
+            if (window.CSS && CSS.supports && CSS.supports('height', '100dvh')) return;
+
+            const appShell = document.querySelector('.app-shell');
+            if (!appShell) return;
+
+            function setAppHeight() {
+                appShell.style.height = window.innerHeight + 'px';
+            }
+
+            setAppHeight();
+            window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', setAppHeight);
+        })();
+    </script>
+
 </body>
 
 </html>
