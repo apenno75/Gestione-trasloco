@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Penno-smart - QR Code Box Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -9,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/2.0.4/qrcode.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -498,6 +499,69 @@
         }
 
         // --- GENERAZIONE QR CODE ---
+        // Libreria: qrcode-generator 2.0.4 (kazuhikoarase), successore mantenuto
+        // di qrcodejs 1.0.0. A differenza della vecchia libreria, qui la versione
+        // del QR (cioè quanti dati può contenere) viene scelta calcolando i byte
+        // REALI prodotti dalla codifica UTF-8 del testo, non stimandoli in anticipo:
+        // questo elimina il problema del "code length overflow" che capitava con
+        // testi ricchi di lettere accentate (è, à, ò, ù...).
+
+        // Genera l'oggetto QR provando prima una correzione errori più alta (M)
+        // e, solo se il testo non ci sta, una più bassa (L) che lascia più spazio
+        // ai dati. typeNumber = 0 significa "scegli automaticamente la versione
+        // (dimensione) minima del QR sufficiente a contenere il testo".
+        function generaOggettoQR(testo) {
+            const livelliCorrezione = ['M', 'L'];
+            let ultimoErrore;
+            for (const livello of livelliCorrezione) {
+                try {
+                    const qr = qrcode(0, livello);
+                    qr.addData(testo, 'Byte');
+                    qr.make();
+                    return qr;
+                } catch (e) {
+                    ultimoErrore = e;
+                }
+            }
+            throw ultimoErrore;
+        }
+
+        // Disegna il QR su un elemento <canvas> con i colori personalizzati
+        // dell'app (qrcode-generator di base produce solo QR in bianco/nero).
+        function disegnaQRSuCanvas(canvas, qr, dimensionePx, colorDark, colorLight) {
+            const moduleCount = qr.getModuleCount();
+            const cellSize = dimensionePx / moduleCount;
+            canvas.width = dimensionePx;
+            canvas.height = dimensionePx;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = colorLight;
+            ctx.fillRect(0, 0, dimensionePx, dimensionePx);
+            ctx.fillStyle = colorDark;
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qr.isDark(row, col)) {
+                        const x = Math.round(col * cellSize);
+                        const y = Math.round(row * cellSize);
+                        const w = Math.ceil((col + 1) * cellSize) - x;
+                        const h = Math.ceil((row + 1) * cellSize) - y;
+                        ctx.fillRect(x, y, w, h);
+                    }
+                }
+            }
+        }
+
+        // Crea un tag <img> pronto da inserire nel DOM a partire dal testo del QR.
+        function creaImgQR(testo, dimensionePx, colorDark, colorLight) {
+            const qr = generaOggettoQR(testo);
+            const canvas = document.createElement('canvas');
+            disegnaQRSuCanvas(canvas, qr, dimensionePx, colorDark, colorLight);
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL('image/png');
+            img.width = dimensionePx;
+            img.height = dimensionePx;
+            return img;
+        }
+
         function generaStringaQR(id, partenza, arrivo, fragileText, contenuto) {
             return `--- TRASLOCO Penno-smart ---\n` +
                    `ID SCATOLA: ${id}\n` +
@@ -522,48 +586,28 @@
 
             const fragileTesto = (fragile === 'si') ? "SI" : "NO";
             const testoQR = generaStringaQR(code, partenza, arrivo, fragileTesto, contenuto);
-            // NOTA: la libreria qrcodejs gestisce già internamente l'UTF-8
-            // (vedi QR8bitByte), quindi il testo va passato così com'è.
-            // Un precedente unescape(encodeURIComponent(...)) causava una
-            // doppia codifica dei caratteri accentati (è, à, ò, ù...),
-            // facendo "esplodere" inutilmente lo spazio occupato nel QR
-            // e generando falsi errori di "contenuto troppo lungo".
+            // NOTA: qrcode-generator gestisce l'UTF-8 codificando i byte reali del
+            // testo (niente stime approssimate), quindi il testo va passato così
+            // com'è, senza encodeURIComponent/escape manuali.
 
             const qrCanvas = document.getElementById('qrcode-canvas');
             if (!qrCanvas) return;
             qrCanvas.innerHTML = "";
 
             try {
-                qrCodeInstance = new QRCode(qrCanvas, {
-                    text: testoQR,
-                    width: 170,
-                    height: 170,
-                    colorDark : "#0f172a",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.M
-                });
-            } catch (e) {
-                try {
-                    qrCanvas.innerHTML = "";
-                    qrCodeInstance = new QRCode(qrCanvas, {
-                        text: testoQR,
-                        width: 170,
-                        height: 170,
-                        colorDark : "#0f172a",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.L
-                    });
-                } catch (err) {
-                    console.error("Errore generazione QR:", err);
-                    console.log("Testo QR completo (per debug):", testoQR);
-                    console.log("Lunghezza testo (caratteri):", testoQR.length);
-                    alert("Il contenuto inserito è troppo lungo per il codice QR.\n\n" +
-                          "Dettagli tecnici: " + err.message + "\n" +
-                          "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
-                          "Controlla se partenza/arrivo/contenuto contengono caratteri incollati da Word/WhatsApp (virgolette curve, emoji, trattini speciali).");
-                    qrCanvas.innerHTML = "<div class='text-red-400 text-xs p-3'>Errore: testo troppo lungo</div>";
-                    return;
-                }
+                const img = creaImgQR(testoQR, 170, "#0f172a", "#ffffff");
+                qrCodeInstance = img;
+                qrCanvas.appendChild(img);
+            } catch (err) {
+                console.error("Errore generazione QR:", err);
+                console.log("Testo QR completo (per debug):", testoQR);
+                console.log("Lunghezza testo (caratteri):", testoQR.length);
+                alert("Il contenuto inserito è troppo lungo per il codice QR.\n\n" +
+                      "Dettagli tecnici: " + err.message + "\n" +
+                      "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
+                      "Prova ad accorciare il contenuto della scatola.");
+                qrCanvas.innerHTML = "<div class='text-red-400 text-xs p-3'>Errore: testo troppo lungo</div>";
+                return;
             }
 
             document.getElementById('qr-preview-id').innerText = `ID: ${code}`;
@@ -662,69 +706,32 @@
 
             const fragileTesto = (s.fragile === 'si') ? "SI" : "NO";
             const testoQR = generaStringaQR(s.id, s.partenza, s.arrivo, fragileTesto, s.contenuto);
-            // Vedi nota in generaEVisualizzaQR(): niente doppia codifica UTF-8.
+            // Vedi nota in generaEVisualizzaQR(): niente doppia codifica UTF-8,
+            // qrcode-generator calcola i byte reali del testo.
 
-            let qrTemp = document.getElementById('qrcode-temp-print');
-            if (!qrTemp) {
-                qrTemp = document.createElement('div');
-                qrTemp.id = 'qrcode-temp-print';
-                qrTemp.style.position = 'fixed';
-                qrTemp.style.left = '-9999px';
-                document.body.appendChild(qrTemp);
-            }
-            qrTemp.innerHTML = "";
-
+            let imgSrc;
             try {
-                new QRCode(qrTemp, {
-                    text: testoQR,
-                    width: 220,
-                    height: 220,
-                    colorDark: "#0f172a",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.M
-                });
-            } catch (e) {
-                try {
-                    qrTemp.innerHTML = "";
-                    new QRCode(qrTemp, {
-                        text: testoQR,
-                        width: 220,
-                        height: 220,
-                        colorDark: "#0f172a",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.L
-                    });
-                } catch (err) {
-                    console.error("Errore generazione QR scatola " + id + ":", err);
-                    console.log("Testo QR completo (per debug):", testoQR);
-                    console.log("Lunghezza testo (caratteri):", testoQR.length);
-                    alert("Impossibile generare il QR per questa scatola: contenuto troppo lungo.\n\n" +
-                          "Dettagli tecnici (utili per il supporto):\n" + err.message + "\n" +
-                          "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
-                          "Controlla se partenza/arrivo/contenuto contengono caratteri incollati da Word/WhatsApp (virgolette curve, emoji, trattini speciali), che occupano più spazio del previsto nel QR.");
-                    return;
-                }
+                const img = creaImgQR(testoQR, 220, "#0f172a", "#ffffff");
+                imgSrc = img.src;
+            } catch (err) {
+                console.error("Errore generazione QR scatola " + id + ":", err);
+                console.log("Testo QR completo (per debug):", testoQR);
+                console.log("Lunghezza testo (caratteri):", testoQR.length);
+                alert("Impossibile generare il QR per questa scatola: contenuto troppo lungo.\n\n" +
+                      "Dettagli tecnici (utili per il supporto):\n" + err.message + "\n" +
+                      "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
+                      "Prova ad accorciare il contenuto della scatola.");
+                return;
             }
 
-            // La libreria QRCode converte il canvas in immagine in modo
-            // leggermente asincrono: attendiamo un istante prima di leggerla.
-            setTimeout(async () => {
-                const imgEl = qrTemp.querySelector('img');
-                const canvasEl = qrTemp.querySelector('canvas');
-                const imgSrc = imgEl ? imgEl.src : (canvasEl ? canvasEl.toDataURL() : null);
+            // qrcode-generator è sincrona: nessun setTimeout necessario per
+            // aspettare la conversione in immagine (a differenza della vecchia libreria).
+            s.stampato = 's';
+            localStorage.setItem('scatole', JSON.stringify(scatole));
+            await salvaSuSupabase(s);
+            mostraListaScatole();
 
-                if (!imgSrc) {
-                    alert("Errore nella generazione del QR.");
-                    return;
-                }
-
-                s.stampato = 's';
-                localStorage.setItem('scatole', JSON.stringify(scatole));
-                await salvaSuSupabase(s);
-                mostraListaScatole();
-
-                apriFinestraStampa(s.id, s.partenza, s.arrivo, s.fragile, imgSrc);
-            }, 150);
+            apriFinestraStampa(s.id, s.partenza, s.arrivo, s.fragile, imgSrc);
         }
 
         // --- GESTIONE SUPABASE CRUD & LOCAL STORAGE ---
