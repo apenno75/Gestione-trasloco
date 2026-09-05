@@ -540,7 +540,7 @@
                         <button onclick="stampaQR()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 transition">
                             <i class="fa-solid fa-print"></i> Stampa
                         </button>
-                        <button onclick="pulisciQRPreview()" class="bg-slate-900 hover:bg-slate-950 text-slate-400 text-xs py-2.5 px-4 rounded-xl font-bold transition">
+                        <button onclick="chiudiAnteprimaQR()" class="bg-slate-900 hover:bg-slate-950 text-slate-400 text-xs py-2.5 px-4 rounded-xl font-bold transition">
                             Chiudi
                         </button>
                     </div>
@@ -954,6 +954,21 @@
 
         function pulisciQRPreview() {
             document.getElementById('container-qr-preview').classList.add('hidden');
+        }
+
+        // Chiamata dal bottone "Chiudi" dell'anteprima QR.
+        // Se l'anteprima era quella di una scatola aperta in MODIFICA (box-id valorizzato)
+        // e l'utente chiude senza salvare, il form deve tornare pulito e pronto per una
+        // nuova scatola, non restare agganciato alla scatola appena aperta in modifica.
+        // Se invece l'anteprima era solo quella di una scatola nuova non ancora salvata,
+        // ci si limita a chiudere il riquadro senza toccare i dati inseriti.
+        function chiudiAnteprimaQR() {
+            const idInModifica = document.getElementById('box-id').value;
+            if (idInModifica) {
+                resettaForm();
+            } else {
+                pulisciQRPreview();
+            }
         }
 
         function apriFinestraStampa(code, partenza, arrivo, fragile, imgSrc) {
