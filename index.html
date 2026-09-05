@@ -397,6 +397,8 @@
                         }
                     });
 
+                    scatole = ordinaPerCodice(scatole);
+
                     localStorage.setItem('stanzePartenza', JSON.stringify(stanzePartenza));
                     localStorage.setItem('stanzeArrivo', JSON.stringify(stanzeArrivo));
                     localStorage.setItem('scatole', JSON.stringify(scatole));
@@ -761,11 +763,22 @@
             assegnaCodiceScatolaAutomatico();
         }
 
+        // Ordina i codici scatola in modo "naturale": tiene conto dei numeri
+        // contenuti nel codice, cosi' SCATOLA_9 viene prima di SCATOLA_27
+        // (con un semplice ordine alfabetico "27" verrebbe prima di "9").
+        // Questo evita che l'ordine mostrato dipenda dall'ordine casuale in
+        // cui i dati arrivano da Supabase o dalla cache locale del dispositivo.
+        function ordinaPerCodice(lista) {
+            return [...lista].sort((a, b) =>
+                (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' })
+            );
+        }
+
         function mostraListaScatole(listaFiltrata = null) {
             const container = document.getElementById('scatole-list');
             if (!container) return;
             container.innerHTML = "";
-            const dati = listaFiltrata || scatole;
+            const dati = ordinaPerCodice(listaFiltrata || scatole);
 
             if (dati.length === 0) {
                 container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>Nessuna scatola registrata</div>`;
@@ -838,7 +851,7 @@
                 return;
             }
 
-            risultati.forEach(s => {
+            ordinaPerCodice(risultati).forEach(s => {
                 const badge = s.fragile === 'si' ? `<span class="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded">FRAGILE</span>` : ``;
                 const flagStampato = (s.stampato === 's')
                     ? `<span class="text-lime-400 bg-lime-400/10 border border-lime-400/20 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1" title="Stampato"><i class="fa-solid fa-check-double"></i> Stampato</span>`
