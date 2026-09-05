@@ -581,27 +581,7 @@
             document.getElementById('container-qr-preview').classList.add('hidden');
         }
 
-        async function stampaQR() {
-            const canvasImg = document.querySelector('#qrcode-canvas img');
-            if (!canvasImg) {
-                alert("Genera prima il codice QR.");
-                return;
-            }
-            
-            const code = document.getElementById('box-code').value;
-            const partenza = document.getElementById('select-partenza').value;
-            const arrivo = document.getElementById('select-arrivo').value;
-            const fragile = document.getElementById('select-fragile').value;
-
-            // Aggiorna lo stato di stampa a 's' non appena viene premuto stampa
-            const sObj = scatole.find(s => s.id === code);
-            if (sObj) {
-                sObj.stampato = 's';
-                localStorage.setItem('scatole', JSON.stringify(scatole));
-                await salvaSuSupabase(sObj);
-                mostraListaScatole();
-            }
-
+        function apriFinestraStampa(code, partenza, arrivo, fragile, imgSrc) {
             const printWindow = window.open('', '_blank');
             if (!printWindow) {
                 alert("Abilita i popup nel browser per stampare.");
@@ -623,7 +603,7 @@
                 <body>
                     <div class="ticket">
                         <div style="font-size: 18px; font-weight: bold;">Penno-smart</div>
-                        <div class="qr-box"><img src="${canvasImg.src}" /></div>
+                        <div class="qr-box"><img src="${imgSrc}" /></div>
                         <div style="font-size: 20px; font-weight: bold; background: #f0f0f0; padding: 4px; border-radius: 4px;">ID: ${code}</div>
                         ${fragile === 'si' ? '<div class="alert-fragile">⚠️ FRAGILE ⚠️</div>' : ''}
                         <div class="details">
@@ -636,6 +616,98 @@
                 </html>
             `);
             printWindow.document.close();
+        }
+
+        async function stampaQR() {
+            const canvasImg = document.querySelector('#qrcode-canvas img');
+            if (!canvasImg) {
+                alert("Genera prima il codice QR.");
+                return;
+            }
+            
+            const code = document.getElementById('box-code').value;
+            const partenza = document.getElementById('select-partenza').value;
+            const arrivo = document.getElementById('select-arrivo').value;
+            const fragile = document.getElementById('select-fragile').value;
+
+            // Aggiorna lo stato di stampa a 's' non appena viene premuto stampa
+            const sObj = scatole.find(s => s.id === code);
+            if (sObj) {
+                sObj.stampato = 's';
+                localStorage.setItem('scatole', JSON.stringify(scatole));
+                await salvaSuSupabase(sObj);
+                mostraListaScatole();
+            }
+
+            apriFinestraStampa(code, partenza, arrivo, fragile, canvasImg.src);
+        }
+
+        // Stampa diretta del QR di una scatola dall'elenco inventario/ricerca,
+        // senza dover passare dal form. Genera il QR "al volo" in un
+        // contenitore nascosto e lo manda subito in stampa.
+        async function stampaQRScatola(id) {
+            const s = scatole.find(x => x.id === id);
+            if (!s) return;
+
+            const fragileTesto = (s.fragile === 'si') ? "SI" : "NO";
+            const testoQRRaw = generaStringaQR(s.id, s.partenza, s.arrivo, fragileTesto, s.contenuto);
+            const testoQR = unescape(encodeURIComponent(testoQRRaw));
+
+            let qrTemp = document.getElementById('qrcode-temp-print');
+            if (!qrTemp) {
+                qrTemp = document.createElement('div');
+                qrTemp.id = 'qrcode-temp-print';
+                qrTemp.style.position = 'fixed';
+                qrTemp.style.left = '-9999px';
+                document.body.appendChild(qrTemp);
+            }
+            qrTemp.innerHTML = "";
+
+            try {
+                new QRCode(qrTemp, {
+                    text: testoQR,
+                    width: 220,
+                    height: 220,
+                    colorDark: "#0f172a",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch (e) {
+                try {
+                    qrTemp.innerHTML = "";
+                    new QRCode(qrTemp, {
+                        text: testoQR,
+                        width: 220,
+                        height: 220,
+                        colorDark: "#0f172a",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
+                } catch (err) {
+                    alert("Impossibile generare il QR per questa scatola: contenuto troppo lungo.");
+                    return;
+                }
+            }
+
+            // La libreria QRCode converte il canvas in immagine in modo
+            // leggermente asincrono: attendiamo un istante prima di leggerla.
+            setTimeout(async () => {
+                const imgEl = qrTemp.querySelector('img');
+                const canvasEl = qrTemp.querySelector('canvas');
+                const imgSrc = imgEl ? imgEl.src : (canvasEl ? canvasEl.toDataURL() : null);
+
+                if (!imgSrc) {
+                    alert("Errore nella generazione del QR.");
+                    return;
+                }
+
+                s.stampato = 's';
+                localStorage.setItem('scatole', JSON.stringify(scatole));
+                await salvaSuSupabase(s);
+                mostraListaScatole();
+
+                apriFinestraStampa(s.id, s.partenza, s.arrivo, s.fragile, imgSrc);
+            }, 150);
         }
 
         // --- GESTIONE SUPABASE CRUD & LOCAL STORAGE ---
@@ -826,6 +898,7 @@
                                 </p>
                             </div>
                             <div class="flex gap-1.5">
+                                <button onclick="stampaQRScatola('${s.id}')" class="p-2 bg-lime-400/10 hover:bg-lime-400/20 text-lime-400 rounded-lg transition" title="Stampa QR"><i class="fa-solid fa-print text-xs"></i></button>
                                 <button onclick="caricaScatolaPerModifica('${s.id}')" class="p-2 bg-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-lg transition"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
                                 <button onclick="eliminaScatola('${s.id}')" class="p-2 bg-red-950/40 hover:bg-red-900 text-red-400 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
                             </div>
@@ -892,6 +965,7 @@
                                 </p>
                             </div>
                             <div class="flex gap-1.5">
+                                <button onclick="stampaQRScatola('${s.id}')" class="p-2 bg-lime-400/10 hover:bg-lime-400/20 text-lime-400 rounded-lg transition" title="Stampa QR"><i class="fa-solid fa-print text-xs"></i></button>
                                 <button onclick="caricaScatolaPerModifica('${s.id}')" class="p-2 bg-slate-700/60 hover:bg-slate-700 text-slate-200 rounded-lg transition"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
                                 <button onclick="eliminaScatola('${s.id}')" class="p-2 bg-red-950/40 hover:bg-red-900 text-red-400 rounded-lg transition"><i class="fa-solid fa-trash-can text-xs"></i></button>
                             </div>
