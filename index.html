@@ -355,12 +355,20 @@
             aggiornaElenchiStanzeConfig();
             mostraListaScatole();
             inizializzaContatori();
-            
+
+            // Codice provvisorio, subito visibile mentre si aspetta la sincronizzazione
             assegnaCodiceScatolaAutomatico();
 
             // Sincronizzazione automatica all'avvio con Supabase
             if (supabaseClient) {
                 await avviaSincronizzazioneAutomaticaAllAvvio();
+            }
+
+            // Ricalcola il codice suggerito ora che i dati sono aggiornati,
+            // ma solo se l'utente non ha già iniziato a modificarlo o non e' in modifica
+            const editId = document.getElementById('box-id').value;
+            if (!editId) {
+                assegnaCodiceScatolaAutomatico();
             }
         });
 
@@ -632,7 +640,18 @@
 
         // --- GESTIONE SUPABASE CRUD & LOCAL STORAGE ---
         function assegnaCodiceScatolaAutomatico() {
-            const prossimoNumero = scatole.length + 1;
+            // Usa il numero più alto realmente presente tra i codici (non il
+            // semplice conteggio), cosi' se manca una scatola in mezzo
+            // (es. cancellata) il prossimo codice non si ripete e non sbaglia.
+            let massimo = 0;
+            scatole.forEach(s => {
+                const match = (s.id || '').match(/(\d+)\s*$/);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (!isNaN(num) && num > massimo) massimo = num;
+                }
+            });
+            const prossimoNumero = massimo + 1;
             document.getElementById('box-code').value = `SCATOLA_` + String(prossimoNumero).padStart(3, '0');
         }
 
