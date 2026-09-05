@@ -521,8 +521,13 @@
             }
 
             const fragileTesto = (fragile === 'si') ? "SI" : "NO";
-            const testoQRRaw = generaStringaQR(code, partenza, arrivo, fragileTesto, contenuto);
-            const testoQR = unescape(encodeURIComponent(testoQRRaw));
+            const testoQR = generaStringaQR(code, partenza, arrivo, fragileTesto, contenuto);
+            // NOTA: la libreria qrcodejs gestisce già internamente l'UTF-8
+            // (vedi QR8bitByte), quindi il testo va passato così com'è.
+            // Un precedente unescape(encodeURIComponent(...)) causava una
+            // doppia codifica dei caratteri accentati (è, à, ò, ù...),
+            // facendo "esplodere" inutilmente lo spazio occupato nel QR
+            // e generando falsi errori di "contenuto troppo lungo".
 
             const qrCanvas = document.getElementById('qrcode-canvas');
             if (!qrCanvas) return;
@@ -549,7 +554,13 @@
                         correctLevel : QRCode.CorrectLevel.L
                     });
                 } catch (err) {
-                    alert("Il contenuto inserito è troppo lungo per il codice QR.");
+                    console.error("Errore generazione QR:", err);
+                    console.log("Testo QR completo (per debug):", testoQR);
+                    console.log("Lunghezza testo (caratteri):", testoQR.length);
+                    alert("Il contenuto inserito è troppo lungo per il codice QR.\n\n" +
+                          "Dettagli tecnici: " + err.message + "\n" +
+                          "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
+                          "Controlla se partenza/arrivo/contenuto contengono caratteri incollati da Word/WhatsApp (virgolette curve, emoji, trattini speciali).");
                     qrCanvas.innerHTML = "<div class='text-red-400 text-xs p-3'>Errore: testo troppo lungo</div>";
                     return;
                 }
@@ -650,8 +661,8 @@
             if (!s) return;
 
             const fragileTesto = (s.fragile === 'si') ? "SI" : "NO";
-            const testoQRRaw = generaStringaQR(s.id, s.partenza, s.arrivo, fragileTesto, s.contenuto);
-            const testoQR = unescape(encodeURIComponent(testoQRRaw));
+            const testoQR = generaStringaQR(s.id, s.partenza, s.arrivo, fragileTesto, s.contenuto);
+            // Vedi nota in generaEVisualizzaQR(): niente doppia codifica UTF-8.
 
             let qrTemp = document.getElementById('qrcode-temp-print');
             if (!qrTemp) {
@@ -684,7 +695,13 @@
                         correctLevel: QRCode.CorrectLevel.L
                     });
                 } catch (err) {
-                    alert("Impossibile generare il QR per questa scatola: contenuto troppo lungo.");
+                    console.error("Errore generazione QR scatola " + id + ":", err);
+                    console.log("Testo QR completo (per debug):", testoQR);
+                    console.log("Lunghezza testo (caratteri):", testoQR.length);
+                    alert("Impossibile generare il QR per questa scatola: contenuto troppo lungo.\n\n" +
+                          "Dettagli tecnici (utili per il supporto):\n" + err.message + "\n" +
+                          "Lunghezza testo: " + testoQR.length + " caratteri.\n\n" +
+                          "Controlla se partenza/arrivo/contenuto contengono caratteri incollati da Word/WhatsApp (virgolette curve, emoji, trattini speciali), che occupano più spazio del previsto nel QR.");
                     return;
                 }
             }
