@@ -1230,6 +1230,12 @@
             document.getElementById('box-id').value = "";
             document.getElementById('text-contenuto').value = "";
             document.getElementById('select-fragile').value = "no";
+            if (stanzePartenza.length > 0) {
+                document.getElementById('select-partenza').value = stanzePartenza[0];
+            }
+            if (stanzeArrivo.length > 0) {
+                document.getElementById('select-arrivo').value = stanzeArrivo[0];
+            }
             pulisciQRPreview();
             assegnaCodiceScatolaAutomatico();
         }
