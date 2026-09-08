@@ -565,10 +565,11 @@
                     <input type="text" id="search-box" oninput="filtraScatole()" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-lime-400" placeholder="Cerca per ID, stanza o contenuto...">
                 </div>
 
-                <label class="flex items-center gap-2 text-xs text-slate-300 select-none cursor-pointer">
-                    <input type="checkbox" id="filter-non-traslocate" onchange="filtraScatole()" class="w-4 h-4 accent-lime-400 cursor-pointer">
-                    Mostra solo le scatole da traslocare
-                </label>
+                <div class="flex gap-1.5 bg-slate-800/60 border border-slate-700 rounded-xl p-1" id="filter-traslocato" data-value="tutte">
+                    <button type="button" onclick="impostaFiltroTraslocato('tutte')" data-filtro-btn="tutte" class="flex-1 text-xs font-semibold py-1.5 rounded-lg transition bg-lime-400 text-slate-900">Tutte</button>
+                    <button type="button" onclick="impostaFiltroTraslocato('da-traslocare')" data-filtro-btn="da-traslocare" class="flex-1 text-xs font-semibold py-1.5 rounded-lg transition text-slate-400 hover:text-slate-200">Da traslocare</button>
+                    <button type="button" onclick="impostaFiltroTraslocato('traslocate')" data-filtro-btn="traslocate" class="flex-1 text-xs font-semibold py-1.5 rounded-lg transition text-slate-400 hover:text-slate-200">Già traslocate</button>
+                </div>
 				<BR> 
                 <div id="scatole-list" class="space-y-3">
                     </div>
@@ -1299,20 +1300,39 @@
             );
         }
 
+        // Imposta il filtro "tutte / da traslocare / già traslocate" nella
+        // vista inventario, aggiorna lo stile del pulsante attivo e ridisegna
+        // la lista di conseguenza.
+        function impostaFiltroTraslocato(valore) {
+            const wrapper = document.getElementById('filter-traslocato');
+            if (!wrapper) return;
+            wrapper.dataset.value = valore;
+
+            wrapper.querySelectorAll('[data-filtro-btn]').forEach(btn => {
+                const attivo = btn.dataset.filtroBtn === valore;
+                btn.className = "flex-1 text-xs font-semibold py-1.5 rounded-lg transition " +
+                    (attivo ? "bg-lime-400 text-slate-900" : "text-slate-400 hover:text-slate-200");
+            });
+
+            mostraListaScatole();
+        }
+
         function mostraListaScatole() {
             const container = document.getElementById('scatole-list');
             if (!container) return;
             container.innerHTML = "";
 
             const q = (document.getElementById('search-box')?.value || '').toLowerCase().trim();
-            const soloDaTraslocare = document.getElementById('filter-non-traslocate')?.checked;
+            const filtroTraslocato = document.getElementById('filter-traslocato')?.dataset.value || 'tutte';
 
             let base = scatole;
             if (q) {
                 base = base.filter(s => s.id.toLowerCase().includes(q) || s.partenza.toLowerCase().includes(q) || s.arrivo.toLowerCase().includes(q) || s.contenuto.toLowerCase().includes(q));
             }
-            if (soloDaTraslocare) {
+            if (filtroTraslocato === 'da-traslocare') {
                 base = base.filter(s => s.traslocato !== 's');
+            } else if (filtroTraslocato === 'traslocate') {
+                base = base.filter(s => s.traslocato === 's');
             }
 
             aggiornaContatoreTraslocate();
