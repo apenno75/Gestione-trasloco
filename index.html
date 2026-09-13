@@ -1337,7 +1337,7 @@
 
             aggiornaContatoreTraslocate();
 
-            const dati = ordinaPerCodice(base);
+            const dati = ordinaPerCodice(base).reverse();
 
             if (dati.length === 0) {
                 container.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>Nessuna scatola registrata</div>`;
