@@ -570,6 +570,18 @@
                     <button type="button" onclick="impostaFiltroTraslocato('da-traslocare')" data-filtro-btn="da-traslocare" class="flex-1 text-xs font-semibold py-1.5 rounded-lg transition text-slate-400 hover:text-slate-200">Da traslocare</button>
                     <button type="button" onclick="impostaFiltroTraslocato('traslocate')" data-filtro-btn="traslocate" class="flex-1 text-xs font-semibold py-1.5 rounded-lg transition text-slate-400 hover:text-slate-200">Già traslocate</button>
                 </div>
+
+                <div class="relative mt-2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </span>
+                    <select id="filter-arrivo" onchange="mostraListaScatole()" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-100 focus:outline-none focus:border-lime-400 appearance-none">
+                        <option value="">Tutte le stanze di arrivo</option>
+                    </select>
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500 pointer-events-none">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </span>
+                </div>
 				<BR> 
                 <div id="scatole-list" class="space-y-3">
                     </div>
@@ -1317,6 +1329,30 @@
             mostraListaScatole();
         }
 
+        // Ricostruisce le opzioni del filtro "Stanza di arrivo" (stanze configurate
+        // + eventuali stanze presenti nelle scatole) mantenendo la selezione attuale.
+        function aggiornaOpzioniFiltroArrivo() {
+            const sel = document.getElementById('filter-arrivo');
+            if (!sel) return;
+            const corrente = sel.value;
+            const stanze = [...new Set([...stanzeArrivo, ...scatole.map(s => s.arrivo).filter(Boolean)])]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+            sel.innerHTML = "";
+            const tutte = document.createElement('option');
+            tutte.value = "";
+            tutte.textContent = "Tutte le stanze di arrivo";
+            sel.appendChild(tutte);
+            stanze.forEach(st => {
+                const n = scatole.filter(s => s.arrivo === st).length;
+                const opt = document.createElement('option');
+                opt.value = st;
+                opt.textContent = st + " (" + n + ")";
+                sel.appendChild(opt);
+            });
+            sel.value = stanze.includes(corrente) ? corrente : "";
+        }
+
         function mostraListaScatole() {
             const container = document.getElementById('scatole-list');
             if (!container) return;
@@ -1324,8 +1360,13 @@
 
             const q = (document.getElementById('search-box')?.value || '').toLowerCase().trim();
             const filtroTraslocato = document.getElementById('filter-traslocato')?.dataset.value || 'tutte';
+            aggiornaOpzioniFiltroArrivo();
+            const filtroArrivo = document.getElementById('filter-arrivo')?.value || '';
 
             let base = scatole;
+            if (filtroArrivo) {
+                base = base.filter(s => s.arrivo === filtroArrivo);
+            }
             if (q) {
                 base = base.filter(s => s.id.toLowerCase().includes(q) || s.partenza.toLowerCase().includes(q) || s.arrivo.toLowerCase().includes(q) || s.contenuto.toLowerCase().includes(q));
             }
